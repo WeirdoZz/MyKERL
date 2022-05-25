@@ -4,7 +4,9 @@ from scipy.sparse import csr_matrix
 from sklearn.model_selection import train_test_split
 import math
 
+
 class Dataset(object):
+
     def load_pickle(self,name):
         """
         加载相关数据集的原始文件
@@ -18,12 +20,13 @@ class Dataset(object):
         """
         加载知识图
         :param name: 知识图所在文件的位置
-        :return: 返回一个第一行为零向量的矩阵
+        :return: 返回一个形状为[[...],...]的矩阵，每一行表示对应索引的商品id的知识表示
         """
         lines=open(name,"r").readlines()
         embedding_map=[]
 
-        for index,l in enumerate(lines):
+        # 这里要去掉第一行，因为第一行是告诉你这个文件是几行几列的
+        for index,l in enumerate(lines[1:]):
             # 移除开头和结尾的空格
             tmps=l.strip()
             # 去掉数据集中的第一列，那是序号列
@@ -37,11 +40,17 @@ class Dataset(object):
                 embedding_map.append(features)
             # 将特征表concat成一个整体矩阵
             feature_matrix=np.concatenate(embedding_map,axis=0)
-            zero_feature=np.zeros((1,50))
 
-            # 在特征矩阵的第一行增加一条零特征向量
-            feature_matrix=np.concatenate((zero_feature,feature_matrix),axis=0)
-            return feature_matrix
+        """
+        原代码在第一行加了一个零向量，但是我觉得没必要，他可能是为了配合前面做的index_shift，这个函数将商品序列的id都加了1
+        对应到这个特征表中那每个特征向量的索引也要加1所以才加了一列0向量
+        
+        破案了,这里还是需要的,因为前面说了填充的0和本身的0会冲突的,所以需要将每个id+1,这样0号商品变成1号,而填充的0是不应该有知识表示的
+        """
+        zero_feature = np.zeros((1, 50))
+        # 在特征矩阵的第一行增加一条零特征向量,因为0号商品实际上是填充的0,没有对应的知识
+        feature_matrix = np.concatenate((zero_feature, feature_matrix), axis=0)
+        return feature_matrix
 
     def save_pickle(self,obj,name,protocol=3):
         """
@@ -131,7 +140,7 @@ class Dataset(object):
         :param user_records: 用户的购买记录(内部id版)
         :param test_ratio: 测试集所占的比例
         :param seed: 随机种子
-        :return: 返回分好的训练集和测试集
+        :return: 返回分好的训练集和测试集,还是按照原来的用户数量，只不过在序列上将其做了一个分割
         """
         train_set=[]
         test_set=[]

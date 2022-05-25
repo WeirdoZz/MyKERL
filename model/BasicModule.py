@@ -4,8 +4,6 @@ import torch
 import torch.nn as nn
 
 
-
-
 class BasicModule(nn.Module):
     def __init__(self):
         super(BasicModule, self).__init__()
